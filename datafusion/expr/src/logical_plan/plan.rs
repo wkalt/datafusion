@@ -360,6 +360,50 @@ pub enum LogicalPlan {
     MaterializedCte(MaterializedCtePlan),
 }
 
+// See the matching impls on `Expr`.
+//
+// SAFETY: every field of every variant is `Send + Sync`;
+// `assert_plan_fields_send_sync` fails to compile otherwise.
+unsafe impl Send for LogicalPlan {}
+// SAFETY: as above.
+unsafe impl Sync for LogicalPlan {}
+
+/// Never called. The match has no wildcard arm, so a new variant must be added
+/// here before the crate compiles.
+#[expect(dead_code)]
+fn assert_plan_fields_send_sync(plan: &LogicalPlan) {
+    use crate::expr::assert_send_sync;
+    match plan {
+        LogicalPlan::Projection(v) => assert_send_sync(v),
+        LogicalPlan::Filter(v) => assert_send_sync(v),
+        LogicalPlan::Window(v) => assert_send_sync(v),
+        LogicalPlan::Aggregate(v) => assert_send_sync(v),
+        LogicalPlan::Sort(v) => assert_send_sync(v),
+        LogicalPlan::Join(v) => assert_send_sync(v),
+        LogicalPlan::Repartition(v) => assert_send_sync(v),
+        LogicalPlan::Union(v) => assert_send_sync(v),
+        LogicalPlan::TableScan(v) => assert_send_sync(v),
+        LogicalPlan::EmptyRelation(v) => assert_send_sync(v),
+        LogicalPlan::Subquery(v) => assert_send_sync(v),
+        LogicalPlan::SubqueryAlias(v) => assert_send_sync(v),
+        LogicalPlan::Limit(v) => assert_send_sync(v),
+        LogicalPlan::Statement(v) => assert_send_sync(v),
+        LogicalPlan::Values(v) => assert_send_sync(v),
+        LogicalPlan::Explain(v) => assert_send_sync(v),
+        LogicalPlan::Analyze(v) => assert_send_sync(v),
+        LogicalPlan::Extension(v) => assert_send_sync(v),
+        LogicalPlan::Distinct(v) => assert_send_sync(v),
+        LogicalPlan::Dml(v) => assert_send_sync(v),
+        LogicalPlan::Ddl(v) => assert_send_sync(v),
+        LogicalPlan::Copy(v) => assert_send_sync(v),
+        LogicalPlan::Show(v) => assert_send_sync(v),
+        LogicalPlan::Unnest(v) => assert_send_sync(v),
+        LogicalPlan::RecursiveQuery(v) => assert_send_sync(v),
+        LogicalPlan::AsOfJoin(v) => assert_send_sync(v),
+        LogicalPlan::MaterializedCte(v) => assert_send_sync(v),
+    }
+}
+
 impl Default for LogicalPlan {
     fn default() -> Self {
         // `Default` is used as a transient placeholder on hot paths (e.g.

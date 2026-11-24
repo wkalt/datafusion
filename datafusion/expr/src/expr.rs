@@ -408,6 +408,70 @@ pub enum Expr {
     LambdaVariable(LambdaVariable),
 }
 
+// `Send` and `Sync` are implemented by hand so that proving them does not walk
+// every type reachable from an expression, which rustc repeats in each function
+// that has lifetime bounds in scope.
+//
+// SAFETY: every field of every variant is `Send + Sync`;
+// `assert_expr_fields_send_sync` fails to compile otherwise.
+unsafe impl Send for Expr {}
+// SAFETY: as above.
+unsafe impl Sync for Expr {}
+
+pub(crate) fn assert_send_sync<T: Send + Sync + ?Sized>(_: &T) {}
+
+/// Never called. The match has no wildcard arm, so a new variant or field must be
+/// added here before the crate compiles.
+#[expect(dead_code)]
+fn assert_expr_fields_send_sync(expr: &Expr) {
+    match expr {
+        Expr::Alias(v) => assert_send_sync(v),
+        Expr::Column(v) => assert_send_sync(v),
+        Expr::ScalarVariable(field, names) => {
+            assert_send_sync(field);
+            assert_send_sync(names);
+        }
+        Expr::Literal(value, metadata) => {
+            assert_send_sync(value);
+            assert_send_sync(metadata);
+        }
+        Expr::BinaryExpr(v) => assert_send_sync(v),
+        Expr::Like(v) | Expr::SimilarTo(v) => assert_send_sync(v),
+        Expr::Not(v)
+        | Expr::IsNotNull(v)
+        | Expr::IsNull(v)
+        | Expr::IsTrue(v)
+        | Expr::IsFalse(v)
+        | Expr::IsUnknown(v)
+        | Expr::IsNotTrue(v)
+        | Expr::IsNotFalse(v)
+        | Expr::IsNotUnknown(v)
+        | Expr::Negative(v) => assert_send_sync(v),
+        Expr::Between(v) => assert_send_sync(v),
+        Expr::Case(v) => assert_send_sync(v),
+        Expr::Cast(v) => assert_send_sync(v),
+        Expr::TryCast(v) => assert_send_sync(v),
+        Expr::ScalarFunction(v) => assert_send_sync(v),
+        Expr::AggregateFunction(v) => assert_send_sync(v),
+        Expr::WindowFunction(v) => assert_send_sync(v),
+        Expr::InList(v) => assert_send_sync(v),
+        Expr::Exists(v) => assert_send_sync(v),
+        Expr::InSubquery(v) => assert_send_sync(v),
+        Expr::SetComparison(v) => assert_send_sync(v),
+        Expr::ScalarSubquery(v) => assert_send_sync(v),
+        Expr::GroupingSet(v) => assert_send_sync(v),
+        Expr::Placeholder(v) => assert_send_sync(v),
+        Expr::OuterReferenceColumn(field, column) => {
+            assert_send_sync(field);
+            assert_send_sync(column);
+        }
+        Expr::Unnest(v) => assert_send_sync(v),
+        Expr::HigherOrderFunction(v) => assert_send_sync(v),
+        Expr::Lambda(v) => assert_send_sync(v),
+        Expr::LambdaVariable(v) => assert_send_sync(v),
+    }
+}
+
 /// Invoke a [`HigherOrderUDF`] with a set of arguments
 #[derive(Clone, Eq, PartialOrd, Debug)]
 pub struct HigherOrderFunction {
